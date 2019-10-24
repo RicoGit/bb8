@@ -6,7 +6,7 @@ pub use redis;
 
 use futures::{Future, IntoFuture};
 
-use redis::aio::Connection;
+use redis::aio::SharedConnection;
 use redis::{Client, RedisError};
 
 use std::option::Option;
@@ -33,13 +33,13 @@ impl RedisPool {
         f: F,
     ) -> impl Future<Item = T, Error = bb8::RunError<E>> + Send + 'a
     where
-        F: FnOnce(Connection) -> U + Send + 'a,
-        U: IntoFuture<Item = (Connection, T), Error = E> + 'a,
+        F: FnOnce(SharedConnection) -> U + Send + 'a,
+        U: IntoFuture<Item = (SharedConnection, T), Error = E> + 'a,
         U::Future: Send,
         E: From<<RedisConnectionManager as bb8::ManageConnection>::Error> + Send + 'a,
         T: Send + 'a,
     {
-        let f = move |conn: Option<Connection>| {
+        let f = move |conn: Option<SharedConnection>| {
             let conn = conn.unwrap();
             f(conn)
                 .into_future()
@@ -64,13 +64,17 @@ impl RedisConnectionManager {
 }
 
 impl bb8::ManageConnection for RedisConnectionManager {
-    type Connection = Option<Connection>;
+    type Connection = Option<SharedConnection>;
     type Error = RedisError;
 
     fn connect(
         &self,
     ) -> Box<dyn Future<Item = Self::Connection, Error = Self::Error> + Send + 'static> {
-        Box::new(self.client.get_async_connection().map(|conn| Some(conn)))
+        Box::new(
+            self.client
+                .get_shared_async_connection()
+                .map(|conn| Some(conn)),
+        )
     }
 
     fn is_valid(
