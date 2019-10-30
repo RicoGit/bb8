@@ -1,4 +1,32 @@
 //! Redis support for the `bb8` connection pool.
+//!
+//! # Examples
+//!
+//! ```rust,no_run
+//! use bb8_redis::*;
+//! use redis::{RedisError, Script, Commands, Client};
+//! use futures::Future;
+//!
+//! let client = Client::open("redis://127.0.0.1/").unwrap();
+//!
+//! let manager = RedisConnectionManager::new(client).unwrap();
+//!
+//! let redis_pool = bb8::Builder::default()
+//!     .max_size(4)
+//!     .build(manager)
+//!     .map(RedisPool::new)
+//!     .map_err(|_err| bb8::RunError::TimedOut);
+//!
+//! let app = redis_pool
+//!     .and_then(|pool| {
+//!         pool.run(|mut conn| {
+//!             redis::cmd("sadd").arg("key").arg("value").query_async::<_, usize>(conn)
+//!         })
+//!     });
+//!
+//! // run app future
+//!
+//! ```
 #![deny(missing_docs, missing_debug_implementations)]
 
 pub use bb8;

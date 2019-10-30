@@ -654,7 +654,4 @@ fn test_conns_drop_on_pool_drop() {
         "Timed out waiting for connections to drop, {} dropped",
         DROPPED.load(Ordering::SeqCst)
     );
-
-
-    // todo test for executing command and scripts
 }
